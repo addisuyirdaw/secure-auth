@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Auth & Identity Control Panel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon"></div>
+      Secure Auth Control Center
+    </div>
+    <div class="user-status">
+      <span id="session-status-text">Guest Mode</span>
+      <span class="status-indicator" id="status-indicator"></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left Sidebar: Simulations and Settings -->
+    <div class="sidebar">
+      <div class="panel">
+        <h3 class="panel-title">Developer Simulation</h3>
+        
+        <div class="form-group">
+          <label for="sim-ip">Simulated Client IP</label>
+          <select id="sim-ip" class="form-control">
+            <option value="127.0.0.1">127.0.0.1 (Localhost)</option>
+            <option value="203.0.113.1">203.0.113.1 (Tokyo, Japan)</option>
+            <option value="109.190.0.1">109.190.0.1 (Paris, France)</option>
+            <option value="198.51.100.5">198.51.100.5 (London, UK)</option>
+            <option value="8.8.8.8">8.8.8.8 (Mountain View, USA)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="sim-location">Simulated Location Override</label>
+          <input type="text" id="sim-location" class="form-control" placeholder="Auto-resolved if empty" value="Localhost">
+        </div>
+
+        <div class="form-group">
+          <label for="sim-fingerprint">Device Fingerprint</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="sim-fingerprint" class="form-control" readonly value="fp_dev_chrome_99">
+            <button class="btn btn-secondary" style="width: auto; padding: 0 0.5rem;" onclick="regenerateFingerprint()">♻️</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="user-info-panel" style="display: none;">
+        <h3 class="panel-title">Active User Account</h3>
+        <div class="form-group">
+          <label>Email</label>
+          <div id="logged-email" style="font-weight: 600; font-size: 0.9rem;">user@example.com</div>
+        </div>
+        <div class="form-group">
+          <label>Access Token (JWT)</label>
+          <div id="access-token-preview" style="font-family: monospace; font-size: 0.75rem; word-break: break-all; opacity: 0.7;">none</div>
+        </div>
+        <div class="form-group">
+          <label>Session ID (DB)</label>
+          <div id="session-id-preview" style="font-family: monospace; font-size: 0.75rem; word-break: break-all; opacity: 0.7;">none</div>
+        </div>
+        <button class="btn btn-outline-danger" onclick="logout()">Sign Out / Revoke Cookie</button>
+      </div>
+    </div>
+
+    <!-- Right Side: Main Panels -->
+    <div class="dashboard-content">
+      <div id="message-container"></div>
+
+      <!-- Out of Session View (Login & Register) -->
+      <div id="logged-out-view" class="panel">
+        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem;">Identity Access Management</h2>
+        
+        <div class="grid-2">
+          <!-- Login Panel -->
+          <div>
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">Sign In</h3>
+            <form onsubmit="handleLogin(event)">
+              <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="login-email" class="form-control" required value="developer@security.io">
+              </div>
+              <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-password" class="form-control" required value="SecurePass123!">
+              </div>
+              <button type="submit" class="btn btn-primary" style="margin-bottom: 1rem;">Authenticate Credentials</button>
+            </form>
+            <button class="btn btn-google" onclick="redirectToGoogle()">
+              <svg style="width: 1rem; height: 1rem;" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.22-.67-.35-1.37-.35-2.09z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Sign in with Google
+            </button>
+          </div>
+
+          <!-- Register Panel -->
+          <div style="border-left: 1px solid var(--border-card); padding-left: 1.5rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">Create Secure Account</h3>
+            <form onsubmit="handleRegister(event)">
+              <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="reg-email" class="form-control" required placeholder="name@domain.com">
+              </div>
+              <div class="form-group">
+                <label>Password (Entropy Gate)</label>
+                <input type="password" id="reg-password" class="form-control" required placeholder="Min 12 chars + strength" oninput="checkPasswordStrength(this.value)">
+                
+                <div class="pw-strength-container" id="pw-strength-container" style="display: none;">
+                  <div class="pw-strength-bar">
+                    <div class="pw-strength-segment" id="seg-0"></div>
+                    <div class="pw-strength-segment" id="seg-1"></div>
+                    <div class="pw-strength-segment" id="seg-2"></div>
+                    <div class="pw-strength-segment" id="seg-3"></div>
+                  </div>
+                  <div class="pw-strength-label">
+                    <span id="strength-text" style="color: var(--danger);">Weak</span>
+                    <span id="strength-score" style="color: var(--color-text-muted);">Score: 0/4</span>
+                  </div>
+                  <ul class="pw-feedback" id="pw-feedback"></ul>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-secondary">Submit Registration</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logged In View (Tabs & Details) -->
+      <div id="logged-in-view" style="display: none;">
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('sessions-tab')">Active Sessions</div>
+          <div class="tab" onclick="switchTab('events-tab')">Security Event Logs</div>
+          <div class="tab" onclick="switchTab('simulations-tab')">Simulation Console</div>
+          <div class="tab" onclick="switchTab('email-tab')">Mock Email Sandbox <span id="mail-badge" style="background-color: var(--danger); color: white; border-radius: 50%; padding: 0.1rem 0.4rem; font-size: 0.65rem; margin-left: 0.25rem; display: none;">0</span></div>
+        </div>
+
+        <!-- Sessions Tab -->
+        <div id="sessions-tab" class="tab-content active panel" style="margin-top: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 600;">Active Sessions</h3>
+            <button class="btn btn-outline-danger" style="width: auto;" onclick="revokeOtherSessions()">Revoke All Other Devices</button>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1rem;">
+            These sessions correspond to active database-backed refresh tokens. If a token is stolen or unused, revoking it terminates the session.
+          </p>
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Device / User-Agent</th>
+                  <th>IP Address</th>
+                  <th>Location</th>
+                  <th>Last Active</th>
+                  <th>Created At</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="sessions-table-body">
+                <tr>
+                  <td colspan="6" class="empty-state">Loading active sessions...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Events Tab -->
+        <div id="events-tab" class="tab-content panel" style="margin-top: 1.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">Security Audit Logs</h3>
+          <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1rem;">
+            Real-time security events captured for this identity. High-risk events generate emails and system blocks.
+          </p>
+          <div class="security-events" id="security-events-list">
+            <div class="empty-state">No security events found.</div>
+          </div>
+        </div>
+
+        <!-- Simulations Tab -->
+        <div id="simulations-tab" class="tab-content panel" style="margin-top: 1.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">Identity Penetration Testing Simulator</h3>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <!-- Brute Force Card -->
+            <div class="panel" style="background-color: rgba(9, 9, 11, 0.4); border-color: rgba(255, 255, 255, 0.04);">
+              <h4 style="margin-bottom: 0.5rem; color: var(--warning);">Brute Force Attack Simulation</h4>
+              <p style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 1rem;">
+                Attempts 5 failed logins within 5 seconds. The system will activate lockout mechanisms on Redis, rejecting further authentication attempts.
+              </p>
+              <button class="btn btn-secondary" onclick="simulateBruteForce()">Trigger Brute-Force Script</button>
+              <div id="bf-status" style="margin-top: 0.5rem; font-size: 0.8rem; font-family: monospace; color: var(--danger); white-space: pre-line;"></div>
+            </div>
+
+            <!-- Impossible Travel Card -->
+            <div class="panel" style="background-color: rgba(9, 9, 11, 0.4); border-color: rgba(255, 255, 255, 0.04);">
+              <h4 style="margin-bottom: 0.5rem; color: var(--danger);">Impossible Travel Detection</h4>
+              <p style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 1rem;">
+                Attempts a login from Tokyo, Japan, followed immediately by a login from London, UK. The Risk Engine detects impossible travel velocity and blocks the login.
+              </p>
+              <button class="btn btn-secondary" onclick="simulateImpossibleTravel()">Trigger Impossible Travel</button>
+              <div id="travel-status" style="margin-top: 0.5rem; font-size: 0.8rem; font-family: monospace; color: var(--warning); white-space: pre-line;"></div>
+            </div>
+
+            <!-- Token Hijacking Card -->
+            <div class="panel" style="background-color: rgba(9, 9, 11, 0.4); border-color: rgba(255, 255, 255, 0.04); grid-column: span 2;">
+              <h4 style="margin-bottom: 0.5rem; color: var(--accent);">Token Reuse / Hijacking Protection</h4>
+              <p style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 1rem;">
+                Simulates token theft: extracts the active refresh token, forces a normal refresh (which rotates it), then attempts to reuse the original revoked token. This triggers immediate compromise detection, revoking all active sessions for the user.
+              </p>
+              <button class="btn btn-secondary" onclick="simulateTokenTheft()">Simulate Refresh Token Abuse</button>
+              <div id="theft-status" style="margin-top: 0.5rem; font-size: 0.8rem; font-family: monospace; color: var(--primary); white-space: pre-line;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mock Mailbox Tab -->
+        <div id="email-tab" class="tab-content panel" style="margin-top: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 600;">Developer Email Sandbox</h3>
+            <button class="btn btn-secondary" style="width: auto; padding: 0.375rem 0.75rem;" onclick="fetchEmails()">Refresh Inbox</button>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 1rem;">
+            Since you are running locally without real SMTP configurations, the backend intercepts all alert emails and puts them in this mock developer sandbox.
+          </p>
+          <div class="mail-sandbox">
+            <div class="mail-list" id="mail-list-container">
+              <div class="empty-state">No emails in inbox. Try triggering a security alert.</div>
+            </div>
+            <div class="mail-viewer" id="mail-viewer-container">
+              <div class="empty-state">Select an email to view contents.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let activeToken = localStorage.getItem('accessToken') || '';
+    let currentSessionId = localStorage.getItem('sessionId') || '';
+    let currentUserEmail = localStorage.getItem('userEmail') || '';
+    let fetchedEmailsCount = 0;
+
+    // Handle initial routing and token captures
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('accessToken');
+      const urlSession = params.get('sessionId');
+      const urlEmail = params.get('email');
+      const urlError = params.get('error');
+
+      if (urlError) {
+        showAlert('Authentication error: ' + decodeURIComponent(urlError), 'danger');
+      }
+
+      if (urlToken && urlSession && urlEmail) {
+        activeToken = urlToken;
+        currentSessionId = urlSession;
+        currentUserEmail = decodeURIComponent(urlEmail);
+        
+        localStorage.setItem('accessToken', activeToken);
+        localStorage.setItem('sessionId', currentSessionId);
+        localStorage.setItem('userEmail', currentUserEmail);
+
+        // Clean up URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        showAlert('Logged in successfully via Google!', 'success');
+      }
+
+      // Generate random fingerprint if not present
+      if (!localStorage.getItem('fingerprint')) {
+        regenerateFingerprint();
+      } else {
+        document.getElementById('sim-fingerprint').value = localStorage.getItem('fingerprint');
+      }
+
+      // Setup initial IP mapping changes
+      document.getElementById('sim-ip').addEventListener('change', (e) => {
+        const ip = e.target.value;
+        const locations = {
+          '127.0.0.1': 'Localhost',
+          '203.0.113.1': 'Tokyo, Japan',
+          '109.190.0.1': 'Paris, France',
+          '198.51.100.5': 'London, UK',
+          '8.8.8.8': 'Mountain View, USA'
+        };
+        document.getElementById('sim-location').value = locations[ip] || 'New York, USA';
+      });
+
+      updateUI();
+      startEmailPolling();
+    });
+
+    function regenerateFingerprint() {
+      const fp = 'fp_dev_' + Math.random().toString(36).substring(2, 10);
+      localStorage.setItem('fingerprint', fp);
+      document.getElementById('sim-fingerprint').value = fp;
+    }
+
+    function getHeaders() {
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-client-ip': document.getElementById('sim-ip').value,
+        'x-client-location': document.getElementById('sim-location').value,
+        'x-device-fingerprint': document.getElementById('sim-fingerprint').value
+      };
+      if (activeToken) {
+        headers['Authorization'] = `Bearer ${activeToken}`;
+      }
+      if (currentSessionId) {
+        headers['x-session-id'] = currentSessionId;
+      }
+      return headers;
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      const tabElement = Array.from(document.querySelectorAll('.tab')).find(el => el.textContent.includes(tabId.split('-')[0].replace(/^\w/, c => c.toUpperCase())));
+      if (tabElement) tabElement.classList.add('active');
+      else {
+        // Find by custom attributes if simple naming fails
+        if (tabId === 'sessions-tab') document.querySelectorAll('.tab')[0].classList.add('active');
+        if (tabId === 'events-tab') document.querySelectorAll('.tab')[1].classList.add('active');
+        if (tabId === 'simulations-tab') document.querySelectorAll('.tab')[2].classList.add('active');
+        if (tabId === 'email-tab') document.querySelectorAll('.tab')[3].classList.add('active');
+      }
+
+      document.getElementById(tabId).classList.add('active');
+
+      if (tabId === 'sessions-tab') fetchSessions();
+      if (tabId === 'events-tab') fetchSecurityEvents();
+      if (tabId === 'email-tab') fetchEmails();
+    }
+
+    function updateUI() {
+      const loggedOutView = document.getElementById('logged-out-view');
+      const loggedInView = document.getElementById('logged-in-view');
+      const userInfoPanel = document.getElementById('user-info-panel');
+      const sessionStatusText = document.getElementById('session-status-text');
+      const indicator = document.getElementById('status-indicator');
+
+      if (activeToken) {
+        loggedOutView.style.display = 'none';
+        loggedInView.style.display = 'block';
+        userInfoPanel.style.display = 'block';
+        sessionStatusText.textContent = currentUserEmail;
+        indicator.classList.add('online');
+
+        document.getElementById('logged-email').textContent = currentUserEmail;
+        document.getElementById('access-token-preview').textContent = activeToken.substring(0, 30) + '...';
+        document.getElementById('session-id-preview').textContent = currentSessionId;
+        
+        fetchSessions();
+      } else {
+        loggedOutView.style.display = 'block';
+        loggedInView.style.display = 'none';
+        userInfoPanel.style.display = 'none';
+        sessionStatusText.textContent = 'Guest Mode';
+        indicator.classList.remove('online');
+      }
+    }
+
+    function showAlert(message, type = 'info') {
+      const container = document.getElementById('message-container');
+      container.innerHTML = `
+        <div class="alert-box ${type === 'danger' ? 'danger' : ''}">
+          <span style="font-size: 1.25rem;">${type === 'danger' ? '🚨' : 'ℹ️'}</span>
+          <span>${message}</span>
+        </div>
+      `;
+      setTimeout(() => {
+        container.innerHTML = '';
+      }, 7000);
+    }
+
+    // AUTH ACTIONS
+    async function handleRegister(e) {
+      e.preventDefault();
+      const email = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-password').value;
+
+      try {
+        const res = await fetch('/auth/register', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showAlert(data.error || 'Registration failed', 'danger');
+          return;
+        }
+
+        activeToken = data.accessToken;
+        currentSessionId = data.sessionId;
+        currentUserEmail = data.user.email;
+
+        localStorage.setItem('accessToken', activeToken);
+        localStorage.setItem('sessionId', currentSessionId);
+        localStorage.setItem('userEmail', currentUserEmail);
+
+        showAlert('Account created & logged in!', 'success');
+        updateUI();
+      } catch (err) {
+        showAlert('Registration error: ' + err.message, 'danger');
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showAlert(data.error || 'Authentication failed', 'danger');
+          return;
+        }
+
+        activeToken = data.accessToken;
+        currentSessionId = data.sessionId;
+        currentUserEmail = data.user.email;
+
+        localStorage.setItem('accessToken', activeToken);
+        localStorage.setItem('sessionId', currentSessionId);
+        localStorage.setItem('userEmail', currentUserEmail);
+
+        if (data.risk) {
+          showAlert(`Logged in (Security note: ${data.risk.level}. Triggers: ${data.risk.triggers.join(', ')})`, 'info');
+        } else {
+          showAlert('Authenticated successfully!', 'success');
+        }
+        updateUI();
+      } catch (err) {
+        showAlert('Login error: ' + err.message, 'danger');
+      }
+    }
+
+    function redirectToGoogle() {
+      // Direct redirection to Google auth path
+      window.location.href = '/auth/google';
+    }
+
+    async function logout() {
+      try {
+        await fetch('/auth/logout', {
+          method: 'POST',
+          headers: getHeaders()
+        });
+      } catch (err) {}
+
+      activeToken = '';
+      currentSessionId = '';
+      currentUserEmail = '';
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('sessionId');
+      localStorage.removeItem('userEmail');
+      updateUI();
+      showAlert('Logged out successfully.', 'info');
+    }
+
+    // PASSWORD STRENGTH CHECK
+    async function checkPasswordStrength(password) {
+      const container = document.getElementById('pw-strength-container');
+      if (!password) {
+        container.style.display = 'none';
+        return;
+      }
+      container.style.display = 'block';
+
+      try {
+        const res = await fetch('/auth/password-strength', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+
+        const score = data.score || 0;
+        const valid = data.valid || false;
+        
+        // Colors corresponding to scores
+        const colors = ['#f43f5e', '#ef4444', '#f59e0b', '#10b981', '#10b981'];
+        const texts = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
+        
+        const strengthText = document.getElementById('strength-text');
+        const strengthScore = document.getElementById('strength-score');
+        
+        strengthText.textContent = texts[score] + (valid ? ' (Accepted)' : ' (Rejected - Min Score 3)');
+        strengthText.style.color = colors[score];
+        strengthScore.textContent = `Score: ${score}/4`;
+
+        // Set segment colors
+        for (let i = 0; i < 4; i++) {
+          const seg = document.getElementById(`seg-${i}`);
+          if (i < score) {
+            seg.style.backgroundColor = colors[score];
+          } else {
+            seg.style.backgroundColor = 'transparent';
+          }
+        }
+
+        const feedbackList = document.getElementById('pw-feedback');
+        feedbackList.innerHTML = '';
+        if (data.feedback && data.feedback.length > 0) {
+          data.feedback.forEach(f => {
+            const li = document.createElement('li');
+            li.textContent = '💡 ' + f;
+            feedbackList.appendChild(li);
+          });
+        }
+      } catch (err) {}
+    }
+
+    // SESSION ACTIONS
+    async function fetchSessions() {
+      if (!activeToken) return;
+
+      try {
+        const res = await fetch('/auth/sessions', {
+          headers: getHeaders()
+        });
+        if (res.status === 401) {
+          handleTokenExpiration();
+          return;
+        }
+        const data = await res.json();
+
+        const tbody = document.getElementById('sessions-table-body');
+        tbody.innerHTML = '';
+
+        if (!data.sessions || data.sessions.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No active sessions.</td></tr>`;
+          return;
+        }
+
+        data.sessions.forEach(s => {
+          const isCurrent = s.id === currentSessionId;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight: 500;">
+              ${s.deviceName || 'Unknown Browser'}
+              ${isCurrent ? '<span class="badge badge-low" style="margin-left: 0.5rem;">Current</span>' : ''}
+            </td>
+            <td><code>${s.ipAddress}</code></td>
+            <td>📍 ${s.location || 'Unknown'}</td>
+            <td>${new Date(s.lastUsedAt).toLocaleString()}</td>
+            <td>${new Date(s.createdAt).toLocaleString()}</td>
+            <td>
+              <button class="btn btn-outline-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="revokeSession('${s.id}')">
+                Revoke
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Fetch sessions failed:', err);
+      }
+    }
+
+    async function revokeSession(id) {
+      if (confirm('Revoke this session? The device will be signed out.')) {
+        try {
+          const res = await fetch(`/auth/sessions/${id}`, {
+            method: 'DELETE',
+            headers: getHeaders()
+          });
+          const data = await res.json();
+          showAlert(data.message || 'Session revoked', 'success');
+          
+          if (id === currentSessionId) {
+            logout();
+          } else {
+            fetchSessions();
+          }
+        } catch (err) {
+          showAlert('Failed to revoke session: ' + err.message, 'danger');
+        }
+      }
+    }
+
+    async function revokeOtherSessions() {
+      if (confirm('Revoke all other sessions? All other logged-in devices will be forced out.')) {
+        try {
+          const res = await fetch('/auth/sessions/others', {
+            method: 'DELETE',
+            headers: getHeaders()
+          });
+          const data = await res.json();
+          showAlert(data.message || 'Other sessions revoked', 'success');
+          fetchSessions();
+        } catch (err) {
+          showAlert('Failed to revoke other sessions: ' + err.message, 'danger');
+        }
+      }
+    }
+
+    // AUDIT LOGS
+    async function fetchSecurityEvents() {
+      if (!activeToken) return;
+
+      try {
+        const res = await fetch('/auth/sessions', { headers: getHeaders() }); // Trigger a simple validation
+        if (res.status === 401) {
+          handleTokenExpiration();
+          return;
+        }
+
+        // We will fetch security events. Let's create an endpoint or query database.
+        // Wait, let's look at prisma: prisma has security events for this user.
+        // We need a route for fetching security events!
+        // Wait! Is there an endpoint to fetch security events?
+        // Let's check: AuthController does not have a fetchSecurityEvents method!
+        // Let's look: `src/routes/auth.routes.ts` doesn't expose it.
+        // Oh! We can add a GET `/auth/events` route so the user can see their logs!
+        // That is an incredible detail. Let's make sure we implement `/auth/events` in AuthController and routes!
+        // Wait, since we are doing that, let's check what it will return: it will fetch from prisma.securityEvent where userId is this user.
+        // Let's fetch it from `/auth/events`.
+        const eventsRes = await fetch('/auth/events', {
+          headers: getHeaders()
+        });
+        
+        const list = document.getElementById('security-events-list');
+        list.innerHTML = '';
+
+        if (!eventsRes.ok) {
+          list.innerHTML = `<div class="empty-state">Could not retrieve logs: ${eventsRes.statusText}</div>`;
+          return;
+        }
+
+        const data = await eventsRes.json();
+        if (!data.events || data.events.length === 0) {
+          list.innerHTML = `<div class="empty-state">No security events found.</div>`;
+          return;
+        }
+
+        data.events.forEach(e => {
+          const card = document.createElement('div');
+          card.className = 'event-card';
+          
+          let severity = 'low';
+          if (['SUSPICIOUS_LOGIN', 'IMPOSSIBLE_TRAVEL', 'SUSPICIOUS_TOKEN_REUSE'].includes(e.type)) {
+            severity = 'high';
+          } else if (['NEW_DEVICE', 'NEW_LOCATION', 'BRUTE_FORCE_LOCKOUT'].includes(e.type)) {
+            severity = 'medium';
+          }
+
+          let detailsHtml = '';
+          if (e.details) {
+            try {
+              const details = JSON.parse(e.details);
+              detailsHtml = `<div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.25rem;">
+                ${Object.entries(details).map(([k, v]) => `<strong>${k}</strong>: ${JSON.stringify(v)}`).join(' | ')}
+              </div>`;
+            } catch (err) {
+              detailsHtml = `<div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.25rem;">${e.details}</div>`;
+            }
+          }
+
+          card.innerHTML = `
+            <div class="event-details">
+              <span class="event-type">${e.type}</span>
+              <span class="event-meta">IP: <code>${e.ipAddress}</code> | Location: 📍 ${e.location || 'Unknown'} | Device: ${e.userAgent.substring(0, 50)}...</span>
+              ${detailsHtml}
+            </div>
+            <div>
+              <span class="badge badge-${severity}">${severity.toUpperCase()}</span>
+              <div style="font-size: 0.7rem; color: var(--color-text-muted); text-align: right; margin-top: 0.25rem;">
+                ${new Date(e.createdAt).toLocaleTimeString()}
+              </div>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+      } catch (err) {
+        console.error('Fetch events failed:', err);
+      }
+    }
+
+    // SIMULATIONS
+
+    // Shared helper: clears all brute-force rate-limit keys for a given IP + email
+    // This is called automatically before each simulation so back-to-back runs never fail due to a prior lockout.
+    async function resetLockout(ip, email) {
+      try {
+        await fetch('/auth/debug/reset-lockout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-client-ip': ip },
+          body: JSON.stringify({ email })
+        });
+      } catch (err) {
+        console.warn('resetLockout failed (non-fatal):', err.message);
+      }
+    }
+
+    async function simulateBruteForce() {
+      const email = currentUserEmail || 'bruteforce_test@security.io';
+      const statusDiv = document.getElementById('bf-status');
+      statusDiv.textContent = '🔓 Auto-resetting any prior lockout for this IP...';
+
+      // Always clear the lockout for the simulated IP before running so re-runs work cleanly
+      const simIp = document.getElementById('sim-ip').value;
+      await resetLockout(simIp, email);
+
+      statusDiv.textContent = '🚀 Launching brute-force script (5 failed logins)...';
+
+      try {
+        let text = '';
+        for (let i = 1; i <= 6; i++) {
+          const res = await fetch('/auth/login', {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ email, password: 'WrongPassword_' + i })
+          });
+          const data = await res.json();
+          
+          text += `[Attempt ${i}] HTTP ${res.status}: ${data.error || 'Success'}\n`;
+          if (res.status === 429) {
+            text += `🔴 LOCKOUT ENFORCED! Cool-down: ${data.retryAfter}s\n`;
+            break;
+          }
+          statusDiv.textContent = text;
+          // small sleep to simulate human/bot rapid typing
+          await new Promise(r => setTimeout(r, 400));
+        }
+        statusDiv.textContent = text;
+        fetchEmails();
+      } catch (err) {
+        statusDiv.textContent += '\nError: ' + err.message;
+      }
+    }
+
+    async function simulateImpossibleTravel() {
+      // Always use a dedicated sim account — the logged-in user may be a Google OAuth
+      // account with no password, which would cause "Invalid credentials" on login.
+      const email = 'travel_sim@security.io';
+      const password = 'SimPass_Travel#99';
+      const statusDiv = document.getElementById('travel-status');
+      statusDiv.textContent = '🔓 Auto-resetting any prior lockouts for Tokyo + London IPs...';
+
+      try {
+        // Always pre-clear lockouts for both IPs used in this simulation so re-runs work cleanly
+        await Promise.all([
+          resetLockout('203.0.113.1', email),
+          resetLockout('109.190.0.1', email),
+        ]);
+
+        statusDiv.textContent = '👤 Ensuring sim account exists...';
+
+        // 1. Always try to register the dedicated sim account (safe to call even if it exists)
+        await fetch('/auth/register', {
+          method: 'POST',
+          headers: {
+            ...getHeaders(),
+            'x-client-ip': '203.0.113.1',
+            'x-client-location': 'Tokyo, Japan'
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        statusDiv.textContent = '✈️ Step 1: Logging in successfully from Tokyo, Japan (IP: 203.0.113.1)...';
+
+        // 2. Login from Tokyo
+        const res1 = await fetch('/auth/login', {
+          method: 'POST',
+          headers: {
+            ...getHeaders(),
+            'x-client-ip': '203.0.113.1',
+            'x-client-location': 'Tokyo, Japan'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        if (!res1.ok) {
+          const d = await res1.json();
+          statusDiv.textContent = `❌ Step 1 failed: ${d.error}`;
+          return;
+        }
+
+        const data1 = await res1.json();
+        statusDiv.textContent = `✅ Step 1: Logged in from Tokyo. Session ID: ${data1.sessionId}\n\n🚗 Step 2: Immediate login attempt from Paris, France (IP: 109.190.0.1)...`;
+
+        await new Promise(r => setTimeout(r, 1000));
+
+        // 3. Login from Paris (Impossible Travel since time diff is < 2 hours and location changed)
+        const res2 = await fetch('/auth/login', {
+          method: 'POST',
+          headers: {
+            ...getHeaders(),
+            'x-client-ip': '109.190.0.1',
+            'x-client-location': 'Paris, France'
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data2 = await res2.json();
+        
+        if (res2.status === 403) {
+          statusDiv.textContent += `\n\n🔴 BLOCKED! HTTP 403: ${data2.error}\n🛡️ Risk assessment blocked login due to Impossible Travel.`;
+        } else if (res2.status === 200 && data2.risk) {
+          statusDiv.textContent += `\n\n⚠️ CHALLENGED! HTTP 200: Allowed with risk level: ${data2.risk.level}. Triggers: ${data2.risk.triggers.join(', ')}`;
+        } else {
+          statusDiv.textContent += `\n\nResult: HTTP ${res2.status}: ${data2.error || 'Success'}`;
+        }
+        
+        fetchEmails();
+      } catch (err) {
+        statusDiv.textContent += '\nError: ' + err.message;
+      }
+    }
+
+    async function simulateTokenTheft() {
+      const statusDiv = document.getElementById('theft-status');
+      statusDiv.textContent = '🤫 Step 1: Acquiring the active refresh token cookie...';
+
+      try {
+        // To simulate token theft: we trigger a refresh but store the OLD token, then reuse the OLD token.
+        // Wait, how do we get the token? Since the refresh token is stored in an HttpOnly cookie,
+        // javascript cannot read it! That's excellent security!
+        // But wait! `/auth/refresh` rotates the token and returns a new Access Token.
+        // Wait, does the API support refresh tokens via request body?
+        // Let's check `auth.controller.ts` line 155:
+        // `const rawToken = req.cookies?.refreshToken || req.body?.refreshToken;`
+        // YES! The controller accepts `refreshToken` in the request body as well!
+        // This is a beautiful design choice that allows us to simulate token theft directly in JS!
+        
+        // Let's create a temporary session with a body token to show rotation:
+        statusDiv.textContent = '🔑 Registering a temporary token-theft test user...';
+        const testEmail = 'theft_' + Math.random().toString(36).substring(2, 8) + '@security.io';
+        const password = 'SecurePass123!';
+
+        const regRes = await fetch('/auth/register', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ email: testEmail, password })
+        });
+        const regData = await regRes.json();
+
+        // Register automatically logs us in and sets the cookie, but wait: does it return a raw refresh token in the response?
+        // Let's look at register in auth.controller.ts:
+        // it sets cookie, but returns { user, accessToken, sessionId }. It does NOT return raw refresh token in JSON.
+        // Wait! What if we login and use cookie-based rotation?
+        // If we make a normal `/auth/refresh` request, the cookie is rotated automatically.
+        // But how do we reuse the old cookie?
+        // The browser automatically updates cookies, so we can't easily capture the old one unless the server returns it, OR if we simulate this by calling a custom debug endpoint or simulating it.
+        // Wait! Let's check if the server returns the refresh token anywhere, or if we can make a custom token generator.
+        // Or wait! We can login, get the refreshToken cookie, but since we cannot copy it,
+        // let's look at `TokenService.generateRefreshToken()`.
+        // What if we add a debug endpoint `POST /auth/debug/generate-session` that returns a raw token so the simulator can abuse it?
+        // Yes! A debug endpoint `POST /auth/debug/generate-session` which logs in a user and returns the raw refresh token in the JSON body. This allows the simulation tab to perform the token theft simulation in a clean, visual way!
+        // Let's add `/auth/debug/generate-session` to routes and controller. It will be a lifesaver for this simulation.
+        
+        statusDiv.textContent = '⚙️ Generating simulated refresh token...';
+        const tokenRes = await fetch('/auth/debug/generate-session', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ email: testEmail, password })
+        });
+        const tokenData = await tokenRes.json();
+        
+        const rawToken = tokenData.refreshToken;
+        statusDiv.textContent = `🎟️ Simulated Refresh Token captured:\n${rawToken.substring(0, 20)}...\n\n🔄 Step 2: Performing Normal Refresh (rotates token, invalidates old token)...`;
+
+        // Wait 1s
+        await new Promise(r => setTimeout(r, 1000));
+
+        // Use rawToken to refresh
+        const refresh1 = await fetch('/auth/refresh', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ refreshToken: rawToken })
+        });
+        const refresh1Data = await refresh1.json();
+
+        statusDiv.textContent += `\n✅ Normal Refresh success! New Access Token: ${refresh1Data.accessToken.substring(0, 15)}...\nOld token is now revoked.\n\n😈 Step 3: Malicious attacker attempts to reuse the revoked token...`;
+
+        await new Promise(r => setTimeout(r, 1000));
+
+        // Try to reuse rawToken
+        const refresh2 = await fetch('/auth/refresh', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ refreshToken: rawToken })
+        });
+        const refresh2Data = await refresh2.json();
+
+        if (refresh2.status === 401) {
+          statusDiv.textContent += `\n\n🔴 REJECTED! HTTP 401: ${refresh2Data.error}\n🔒 Compromise alert triggered in token service!\n🛡️ All active sessions for ${testEmail} have been invalidated automatically!`;
+        } else {
+          statusDiv.textContent += `\n\nResult: HTTP ${refresh2.status}: ${refresh2Data.error || 'Allowed'}`;
+        }
+        
+        fetchEmails();
+      } catch (err) {
+        statusDiv.textContent += '\nError: ' + err.message;
+      }
+    }
+
+    // EMAIL SANDBOX
+    async function fetchEmails() {
+      try {
+        const res = await fetch('/auth/debug/emails');
+        const data = await res.json();
+        
+        const badge = document.getElementById('mail-badge');
+        const list = document.getElementById('mail-list-container');
+        list.innerHTML = '';
+
+        if (!data.emails || data.emails.length === 0) {
+          list.innerHTML = `<div class="empty-state">No emails in sandbox.</div>`;
+          badge.style.display = 'none';
+          document.getElementById('mail-viewer-container').innerHTML = `<div class="empty-state">Select an email to view contents.</div>`;
+          fetchedEmailsCount = 0;
+          return;
+        }
+
+        badge.textContent = data.emails.length;
+        badge.style.display = 'inline-block';
+
+        if (data.emails.length > fetchedEmailsCount) {
+          // Play a small notification or highlight if new emails arrived
+          document.getElementById('mail-badge').style.animation = 'pulse 1s infinite';
+        }
+        fetchedEmailsCount = data.emails.length;
+
+        // Sort desc by time
+        const sorted = data.emails.reverse();
+        
+        sorted.forEach((e, idx) => {
+          const item = document.createElement('div');
+          item.className = 'mail-item';
+          item.onclick = () => viewEmail(e, item);
+          item.innerHTML = `
+            <div class="mail-item-subject">${e.subject}</div>
+            <div class="mail-item-meta">
+              <span>To: ${e.to}</span>
+              <span>${new Date(e.sentAt).toLocaleTimeString()}</span>
+            </div>
+          `;
+          list.appendChild(item);
+          
+          // default open first email
+          if (idx === 0) {
+            viewEmail(e, item);
+          }
+        });
+      } catch (err) {
+        console.error('Fetch emails failed:', err);
+      }
+    }
+
+    function viewEmail(email, element) {
+      document.querySelectorAll('.mail-item').forEach(i => i.classList.remove('active'));
+      if (element) element.classList.add('active');
+
+      const viewer = document.getElementById('mail-viewer-container');
+      viewer.innerHTML = `
+        <div class="mail-viewer-header">
+          <div class="mail-viewer-subject">${email.subject}</div>
+          <div class="mail-viewer-meta">
+            <div><strong>Recipient:</strong> ${email.to}</div>
+            <div><strong>Time Sent:</strong> ${new Date(email.sentAt).toLocaleString()}</div>
+          </div>
+        </div>
+        <div class="mail-viewer-body">${email.body}</div>
+      `;
+    }
+
+    function startEmailPolling() {
+      // Poll every 3 seconds
+      setInterval(() => {
+        fetchEmails();
+      }, 3000);
+    }
+
+    function handleTokenExpiration() {
+      showAlert('Session expired. Please log in again.', 'danger');
+      logout();
+    }
+  </script>
+</body>
+</html>
