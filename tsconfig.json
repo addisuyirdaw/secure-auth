@@ -7,8 +7,8 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "outDir": "dist",
+    "rootDir": "src",
     "resolveJsonModule": true,
-    "moduleResolution": "node",
     "types": ["node", "express"]
   },
   "include": ["src/**/*.ts"],
